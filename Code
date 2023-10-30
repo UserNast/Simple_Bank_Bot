@@ -1,0 +1,141 @@
+def INT(a):
+  d = 10 ** (len(a) - 1)
+  e = 0
+  for i in a:
+    e += int(i) * d
+    d //= 10
+  return e
+
+import telebot
+bot = telebot.TeleBot(token="6791785067:AAHp85nW3R95oUY_HEs1-hZdK_GVomlQlA0", parse_mode=None) # You can set parse_mode by default. HTML or MARKDOWN
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+	bot.reply_to(message, "Привет! Я помогу тебе подсчитать баланс на карте. Пользуйся следующими командами: ""Пополнить"", ""Снять"", ""Баланс"", ""Перевод"", ""Начислить"".")
+
+global d
+d = dict()
+
+@bot.message_handler(commads = ['command1'])
+def deposit(message):
+  bot.send_message(message.from_user.id, "Пожалуйста, напишите имя получателся одним словом и через пробел сумму в виде цифр. Если это будет сделано в другом виде, то бот будет работать неккоректно.")
+  bot.deposit_next_step_handler(message, get_deposit); #следующий шаг – функция get_deposit
+
+def get_deposit(message):
+  l = ''
+  c = ''
+  F = False
+  s = message.text
+  for j in s:
+    if j != ' ' and j != '\n':
+      if F == False:
+        l += j
+      else:
+        c += j
+    else:
+      F = True
+  c = INT(c)
+  r = d.get(l)
+  if r == None:
+    r = 0
+  d.update({l : r + c})
+  bot.send_message(message.from_user.id, "Значение переписано. Если до этого такой карты не существовало, она была создана сейчас.")
+
+@bot.message_handler(commads = ['command2'])
+def withdraw(message):
+  bot.send_message(message.from_user.id, "Пожалуйста, напишите имя владельца нужной карты одним словом и через пробел сумму в виде цифр. Если это будет сделано в другом виде, то бот будет работать неккоректно.")
+  bot.withdraw_next_step_handler(message, get_withdraw); #следующий шаг – функция get_withdraw
+
+def get_withdraw(message):
+  s =  message.text
+  l = ''
+  c = ''
+  F = False
+  for j in s:
+    if j != ' ' and j != '\n':
+      if F == False:
+        l += j
+      else:
+        c += j
+    else:
+      F = True
+  c = INT(c)
+  r = d.get(l)
+  if r == None:
+    r = 0
+  d.update({l : r - c})
+  bot.send_message(message.from_user.id, "Значение переписано. Если до этого такой карты не существовало, она была создана сейчас.")
+
+@bot.message_handler(commads = ['command3'])
+def balance(message):
+  bot.send_message(message.from_user.id, "Пожалуйста, напишите имя владельца нужной карты одним словом, без пробелов. Если это будет сделано в другом виде, то бот будет работать неккоректно.")
+  bot.balance_next_step_handler(message, get_balance); #следующий шаг – функция get_balance
+
+def get_balance(message):
+  s = message.text
+  r = d.get(s)
+  if r == None:
+    bot.send_message(message.from_user.id, "Ошибка. Карты с таким владельцем не существует.")
+  else:
+    bot.send_message(message.from_user.id, r)
+
+@bot.message_handler(commads = ['command4'])
+def transfer(message):
+  bot.send_message(message.from_user.id, "Пожалуйста, напишите имя владельца первой карты одним словом, далее через пробел имя владельца следующей карты, и через пробел сумму в виде цифер. Если это будет сделано в другом виде, то бот будет работать неккоректно.")
+  bot.transfer_next_step_handler(message, get_transfer); #следующий шаг – функция get_transfer
+
+def get_transfer(message):
+  n1 = ''
+  n2 = ''
+  s = ''
+  F = False
+  R = False
+  S = message.text
+  for j in S:
+    if j != ' ' and j != '\n':
+      if F == False:
+        n1 += j
+      elif R == False:
+        n2 += j
+      else:
+        s += j
+    else:
+      if F == False:
+        F = True
+      else:
+        R = True
+  s = INT(s)
+  r = d.get(n1)
+  if r == None:
+    r = 0
+  d.update({n1 : r - s})
+  r = d.get(n2)
+  if r == None:
+    r = 0
+  d.update({n2 : r + s})
+  bot.send_message(message.from_user.id, "Значения переписаны. Если до этого таких карт не существовало, они были созданы сейчас.")
+
+@bot.message_handler(commads = ['command5'])
+def balance(message):
+  bot.send_message(message.from_user.id, "Данная команда начисляет процент на все существующие карты. Пожалуйста, напишите процент в виде цифр. Если это будет сделано в другом виде, то бот будет работать неккоректно.")
+  bot.balance_next_step_handler(message, get_balance); #следующий шаг – функция get_balance
+
+def get_balance(message):
+  try:
+    p = int(message.text) #проверяем, что процент введен корректно
+    for j in d:
+      r = d.get(j)
+      if r > 0:
+        d.update({j : r + (r * p) // 100})
+    bot.send_message(message.from_user.id, "Значения переписаны.")
+  except Exception:
+    bot.send_message(message.from_user.id, "Введённое значение неккоректно")
+
+@bot.message_handler(commads = ['text'])
+def every_other_situation(message):
+  bot.send_message(message.from_user.id, "Извините, данная команда не предусмотрена этим ботом. Попробуйте что-нибудь из списка: ""Пополнить"", ""Снять"", ""Баланс"", ""Перевод"", ""Начислить"".")
+
+#bot.polling(none_stop=True, interval=0)
+bot.infinity_polling()
+#if __name__ == '__main__':
+  #pass
